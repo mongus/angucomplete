@@ -20,6 +20,7 @@ angular.module('angucomplete', [] )
             "inputClass": "@inputclass",
             "userPause": "@pause",
             "localData": "=localdata",
+            "searchFunction": "&searchfunction",
             "searchFields": "@searchfields",
             "minLengthUser": "@minlength",
             "matchClass": "@matchclass"
@@ -79,8 +80,11 @@ angular.module('angucomplete', [] )
                         var text = titleCode.join(' ');
                         if ($scope.matchClass) {
                             var re = new RegExp(str, 'i');
-                            var strPart = text.match(re)[0];
-                            text = $sce.trustAsHtml(text.replace(re, '<span class="'+ $scope.matchClass +'">'+ strPart +'</span>'));
+                            var matches = text.match(re);
+                            if (matches) {
+                                var strPart = matches[0];
+                                text = $sce.trustAsHtml(text.replace(re, '<span class="' + $scope.matchClass + '">' + strPart + '</span>'));
+                            }
                         }
 
                         var resultRow = {
@@ -123,7 +127,7 @@ angular.module('angucomplete', [] )
                         $scope.searching = false;
                         $scope.processResults(matches, str);
 
-                    } else {
+                    } else if ($scope.url) {
                         $http.get($scope.url + str, {}).
                             success(function(responseData, status, headers, config) {
                                 $scope.searching = false;
@@ -132,6 +136,24 @@ angular.module('angucomplete', [] )
                             error(function(data, status, headers, config) {
                                 console.log("error");
                             });
+                    } else if (typeof($scope.searchFunction) == 'function') {
+                        var search = $scope.searchFunction();
+
+                        var response = search(str);
+
+                        if (typeof(response) == 'object' && typeof(response.then) == 'function') {
+                            response.then(function(matches) {
+                                $scope.searching = false;
+                                $scope.processResults(matches, str);
+                            }, function() {
+                                console.log("error");
+                            });
+                        } else {
+                            $scope.searching = false;
+                            $scope.processResults(response, str);
+                        }
+                    } else {
+                        console.log('no data source!', $scope);
                     }
                 }
             }
